@@ -18,7 +18,9 @@ nonempty_grid_fc = "NONEMPTY_OVERMAP_GRID"
 arcpy.MakeFeatureLayer_management(omg_fc, nonempty_grid_fc)
 arcpy.SelectLayerByLocation_management(nonempty_grid_fc, "INTERSECT", towns_fc)
 
-#with arcpy.da.SearchCursor(omg_fc, "PageNumber", "PageNumber = 1013") as cursor:
+# arcpy.CopyFeatures_management(nonempty_grid_fc, "OVERMAP_FILTERED_GRID")
+
+# with arcpy.da.SearchCursor(omg_fc, "PageNumber", "PageNumber = 1013") as cursor:
 with arcpy.da.SearchCursor(nonempty_grid_fc, "PageNumber") as cursor:
     for row in cursor:
         filtered_grid_fc = "OVERMAP_FILTERED_GRID"
@@ -61,5 +63,3 @@ with arcpy.da.SearchCursor(nonempty_grid_fc, "PageNumber") as cursor:
             arcpy.Delete_management(rit_fc)
         arcpy.TabulateIntersection_analysis(om_fc, "PageNumber", rc_fc, rit_fc, "RDTYPE")
         print("Done creating %s" % rit_fc)
-
-        break
