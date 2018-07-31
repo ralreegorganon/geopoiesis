@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,6 +12,12 @@ namespace CataclysmGis
     class Program
     {
         static void Main(string[] args)
+        {
+            //WriteOvermaps();
+            WriteSqlite();
+        }
+
+        private static void WriteOvermaps()
         {
             var completeSql = @"
                 with
@@ -129,7 +137,8 @@ namespace CataclysmGis
                                 list.Add(current);
                             }
 
-                            current = new OvermapTerrain {
+                            current = new OvermapTerrain
+                            {
                                 Type = r.omt,
                                 Count = 1
                             };
@@ -144,6 +153,71 @@ namespace CataclysmGis
                     template[12] = outer;
 
                     File.WriteAllLines($@"F:\code\cpp\Cataclysm-DDA\save\Hacks\o.{om.x}.{om.y}", template);
+                }
+            }
+        }
+
+        private static void WriteSqlite()
+        {
+            SQLiteConnection.CreateFile(@"c:\users\jj\desktop\catalysm.sqlite3");
+            using (var sourceConnection = new SqlConnection("Server=localhost;Database=Cataclysm;Trusted_connection=true"))
+            using (var targetConnection = new SQLiteConnection(@"Data Source=c:\users\jj\desktop\catalysm.sqlite3;Version=3;"))
+            {
+                targetConnection.Open();
+                targetConnection.Execute("create table omt (om_x int, om_y int, omt_x int, omt_y int, lucode int, rdtype int)");
+
+                sourceConnection.Open();
+
+                var sources = sourceConnection.Query(@"
+                    with
+                    temp_landuse as 
+                    (
+	                    select 
+		                    pagenumber, LU05_DESC, lucode, percentage, 
+		                    max(percentage) over (partition by pagenumber) oid_max,
+		                    max(case when lu05_desc = 'Water' then 1 else 0 end) over (partition by pagenumber) water_precedence 
+	                    from om1013_landuse_intersection_tabulation
+                    ), 
+                    max_landuse as
+                    (
+	                    select * from temp_landuse where (percentage = oid_max and water_precedence = 0) or (water_precedence = 1 and lu05_desc = 'Water')
+                    ),
+                    temp_road as 
+                    (
+	                    select pagenumber, rdtype, min(rdtype) over (partition by pagenumber) oid_max from om1013_road_intersection_tabulation
+                    ), 
+                    max_road as
+                    (
+	                    select * from temp_road where rdtype = oid_max 
+                    ),
+                    attributed as
+                    (
+	                    select 
+		                    1013/69 as om_y,
+		                    1013%69 as om_x,
+		                    (otg.pagenumber - 1)/180 as omt_y,
+		                    (otg.pagenumber - 1)%180 as omt_x,
+		                    ml.lucode,
+		                    mr.rdtype
+	                    from 
+		                    om1013_overmap_terrain_grid otg
+		                    left outer join max_landuse ml 
+			                    on otg.pagenumber = ml.pagenumber
+		                    left outer join max_road mr 
+			                    on otg.pagenumber = mr.pagenumber
+                    )
+                    select * from attributed order by omt_y, omt_x
+                ");
+
+                using (var tx = targetConnection.BeginTransaction())
+                {
+                    foreach (var source in sources)
+                    {
+                        targetConnection.Execute("insert into omt (om_x, om_y, omt_x, omt_y, lucode, rdtype) values (@om_x, @om_y, @omt_x, @omt_y, @lucode, @rdtype)",
+                            new {source.om_x, source.om_y, source.omt_x, source.omt_y, source.lucode, source.rdtype},
+                            tx);
+                    }
+                    tx.Commit();
                 }
             }
         }

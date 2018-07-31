@@ -1,10 +1,10 @@
 import arcpy
 
-arcpy.env.workspace = "H:\cddmap\data\custom.gdb"
+arcpy.env.workspace = "C:\users\jj\desktop\custom.gdb"
 #arcpy.env.workspace = "C:\Users\jj\AppData\Roaming\ESRI\Desktop10.6\ArcCatalog\cataclysm@localhost.sde"
 
 omg_fc = "OVERMAP_GRID"
-landuse_fc = "LANDUSE2005"
+landuse_fc = "LANDUSE2005_POLY"
 road_fc = "EOTROADS_ARC"
 towns_fc = "TOWNSSURVEY_POLYM"
 
@@ -18,10 +18,10 @@ nonempty_grid_fc = "NONEMPTY_OVERMAP_GRID"
 arcpy.MakeFeatureLayer_management(omg_fc, nonempty_grid_fc)
 arcpy.SelectLayerByLocation_management(nonempty_grid_fc, "INTERSECT", towns_fc)
 
-# arcpy.CopyFeatures_management(nonempty_grid_fc, "OVERMAP_FILTERED_GRID")
+#arcpy.CopyFeatures_management(nonempty_grid_fc, "OVERMAP_FILTERED_GRID")
 
-# with arcpy.da.SearchCursor(omg_fc, "PageNumber", "PageNumber = 1013") as cursor:
-with arcpy.da.SearchCursor(nonempty_grid_fc, "PageNumber") as cursor:
+with arcpy.da.SearchCursor(omg_fc, "PageNumber", "PageNumber = 1013") as cursor:
+# with arcpy.da.SearchCursor(nonempty_grid_fc, "PageNumber") as cursor:
     for row in cursor:
         filtered_grid_fc = "OVERMAP_FILTERED_GRID"
         omid = row[0]
