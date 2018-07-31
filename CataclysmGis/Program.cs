@@ -167,86 +167,101 @@ namespace CataclysmGis
                 targetConnection.Execute("create table omt (om_x int, om_y int, omt_x int, omt_y int, landuse_lucode int, road_rdtype int, railroad_type int, railroad_rt_class int, railroadstation_amtrak varchar(1), railroadstation_c_railstat varchar(1))");
 
                 sourceConnection.Open();
+                var oms = sourceConnection.Query(@"
+                    select pagename, pagenumber, pagenumber/69 as y, pagenumber%69 as x from overmap_filtered_grid 
+                    where pagenumber = 1013
+                    order by pagenumber
+                    ");
 
-                var sources = sourceConnection.Query(@"
-                    with
-                    temp_landuse as 
-                    (
-	                    select 
-		                    pagenumber, LU05_DESC, lucode, percentage, 
-		                    max(percentage) over (partition by pagenumber) oid_max,
-		                    max(case when lu05_desc = 'Water' then 1 else 0 end) over (partition by pagenumber) water_precedence 
-	                    from om1013_landuse_intersection_tabulation
-                    ), 
-                    max_landuse as
-                    (
-	                    select * from temp_landuse where (percentage = oid_max and water_precedence = 0) or (water_precedence = 1 and lu05_desc = 'Water')
-                    ),
-                    temp_road as 
-                    (
-	                    select pagenumber, rdtype, min(rdtype) over (partition by pagenumber) oid_max from om1013_road_intersection_tabulation
-                    ), 
-                    max_road as
-                    (
-	                    select * from temp_road where rdtype = oid_max 
-                    ),
-                    temp_trains as
-                    (
-	                    select pagenumber, type, rt_class, percentage, max(percentage) over (partition by pagenumber) oid_max from om1013_trains_intersection_tabulation
-                    ),
-                    max_trains as
-                    (
-	                    select * from temp_trains where percentage = oid_max
-                    ),
-                    temp_trainstation as
-                    (
-	                    select pagenumber, c_railstat, amtrak, percentage, max(percentage) over (partition by pagenumber) oid_max from om1013_train_stations_intersection_tabulation
-                    ),
-                    max_trainstation as
-                    (
-	                    select * from temp_trainstation where percentage = oid_max
-                    ),
-                    attributed as
-                    (
-	                    select 
-		                    1013/69 as om_y,
-		                    1013%69 as om_x,
-		                    (otg.pagenumber - 1)/180 as omt_y,
-		                    (otg.pagenumber - 1)%180 as omt_x,
-		                    ml.lucode as landuse_lucode,
-		                    mr.rdtype as road_rdtype,
-		                    mt.type as railroad_type,
-		                    mt.rt_class as railroad_rt_class,
-		                    mts.amtrak as railroadstation_amtrak,
-		                    mts.c_railstat as railroadstation_c_railstat
-	                    from 
-		                    om1013_overmap_terrain_grid otg
-		                    left outer join max_landuse ml 
-			                    on otg.pagenumber = ml.pagenumber
-		                    left outer join max_road mr 
-			                    on otg.pagenumber = mr.pagenumber
-		                    left outer join max_trains as mt
-			                    on otg.pagenumber = mt.pagenumber
-		                    left outer join max_trainstation as mts
-			                    on otg.pagenumber = mts.pagenumber
-                    )
-                    select * from attributed 
-                    order by omt_y, omt_x
-                ");
-
-                using (var tx = targetConnection.BeginTransaction())
+                foreach (var om in oms)
                 {
-                    foreach (var source in sources)
+                    var sql = $@"
+                        with
+                        temp_landuse as 
+                        (
+	                        select 
+		                        pagenumber, LU05_DESC, lucode, percentage, 
+		                        max(percentage) over (partition by pagenumber) oid_max,
+		                        max(case when lu05_desc = 'Water' then 1 else 0 end) over (partition by pagenumber) water_precedence 
+	                        from om{om.pagenumber}_landuse_intersection_tabulation
+                        ), 
+                        max_landuse as
+                        (
+	                        select * from temp_landuse where (percentage = oid_max and water_precedence = 0) or (water_precedence = 1 and lu05_desc = 'Water')
+                        ),
+                        temp_road as 
+                        (
+	                        select pagenumber, rdtype, min(rdtype) over (partition by pagenumber) oid_max from om{
+                            om.pagenumber
+                        }_road_intersection_tabulation
+                        ), 
+                        max_road as
+                        (
+	                        select * from temp_road where rdtype = oid_max 
+                        ),
+                        temp_trains as
+                        (
+	                        select pagenumber, type, rt_class, percentage, max(percentage) over (partition by pagenumber) oid_max from om{
+                            om.pagenumber
+                        }_trains_intersection_tabulation
+                        ),
+                        max_trains as
+                        (
+	                        select * from temp_trains where percentage = oid_max
+                        ),
+                        temp_trainstation as
+                        (
+	                        select pagenumber, c_railstat, amtrak, percentage, max(percentage) over (partition by pagenumber) oid_max from om{
+                            om.pagenumber
+                        }_train_stations_intersection_tabulation
+                        ),
+                        max_trainstation as
+                        (
+	                        select * from temp_trainstation where percentage = oid_max
+                        ),
+                        attributed as
+                        (
+	                        select 
+		                        {om.pagenumber}/69 as om_y,
+		                        {om.pagenumber}%69 as om_x,
+		                        (otg.pagenumber - 1)/180 as omt_y,
+		                        (otg.pagenumber - 1)%180 as omt_x,
+		                        ml.lucode as landuse_lucode,
+		                        mr.rdtype as road_rdtype,
+		                        mt.type as railroad_type,
+		                        mt.rt_class as railroad_rt_class,
+		                        mts.amtrak as railroadstation_amtrak,
+		                        mts.c_railstat as railroadstation_c_railstat
+	                        from 
+		                        om{om.pagenumber}_overmap_terrain_grid otg
+		                        left outer join max_landuse ml 
+			                        on otg.pagenumber = ml.pagenumber
+		                        left outer join max_road mr 
+			                        on otg.pagenumber = mr.pagenumber
+		                        left outer join max_trains as mt
+			                        on otg.pagenumber = mt.pagenumber
+		                        left outer join max_trainstation as mts
+			                        on otg.pagenumber = mts.pagenumber
+                        )
+                        select * from attributed 
+                        order by omt_y, omt_x
+                    ";
+                    var sources = sourceConnection.Query(sql);
+
+                    using (var tx = targetConnection.BeginTransaction())
                     {
-                        targetConnection.Execute(@"
-                        insert into omt 
-                        (om_x, om_y, omt_x, omt_y, landuse_lucode, road_rdtype, railroad_type, railroad_rt_class, railroadstation_amtrak, railroadstation_c_railstat) 
-                        values 
-                        (@om_x, @om_y, @omt_x, @omt_y, @landuse_lucode, @road_rdtype, @railroad_type, @railroad_rt_class, @railroadstation_amtrak, @railroadstation_c_railstat)",
-                            new {source.om_x, source.om_y, source.omt_x, source.omt_y, source.landuse_lucode, source.road_rdtype, source.railroad_type, source.railroad_rt_class, source.railroadstation_amtrak, source.railroadstation_c_railstat },
-                            tx);
+                        foreach (var source in sources)
+                        {
+                            targetConnection.Execute(@"
+                            insert into omt 
+                            (om_x, om_y, omt_x, omt_y, landuse_lucode, road_rdtype, railroad_type, railroad_rt_class, railroadstation_amtrak, railroadstation_c_railstat) 
+                            values 
+                            (@om_x, @om_y, @omt_x, @omt_y, @landuse_lucode, @road_rdtype, @railroad_type, @railroad_rt_class, @railroadstation_amtrak, @railroadstation_c_railstat)",
+                                new {source.om_x, source.om_y, source.omt_x, source.omt_y, source.landuse_lucode, source.road_rdtype, source.railroad_type, source.railroad_rt_class, source.railroadstation_amtrak, source.railroadstation_c_railstat },
+                                tx);
+                        }
+                        tx.Commit();
                     }
-                    tx.Commit();
                 }
             }
         }

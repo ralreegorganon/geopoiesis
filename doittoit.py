@@ -1,6 +1,6 @@
 import arcpy
 
-arcpy.env.workspace = "C:\users\jj\desktop\custom.gdb"
+arcpy.env.workspace = "H:\cddmap\data\custom.gdb"
 #arcpy.env.workspace = "C:\Users\jj\AppData\Roaming\ESRI\Desktop10.6\ArcCatalog\cataclysm@localhost.sde"
 
 omg_fc = "OVERMAP_GRID"
@@ -43,33 +43,33 @@ with arcpy.da.SearchCursor(filtered_grid_fc, "PageNumber", "PageNumber = 1013") 
         arcpy.GridIndexFeatures_cartography(om_fc, single_overmap_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180")
         print("Done creating %s" % om_fc)
 
-        # luc_fc = "OM%s_LANDUSE_CLIP" % omid
-        # print("Creating %s" % luc_fc)
-        # if arcpy.Exists(luc_fc):
-        #     arcpy.Delete_management(luc_fc)
-        # arcpy.Clip_analysis(landuse_fc, single_overmap_fc, luc_fc)
-        # print("Done creating %s" % luc_fc)
+        luc_fc = "OM%s_LANDUSE_CLIP" % omid
+        print("Creating %s" % luc_fc)
+        if arcpy.Exists(luc_fc):
+            arcpy.Delete_management(luc_fc)
+        arcpy.Clip_analysis(landuse_fc, single_overmap_fc, luc_fc)
+        print("Done creating %s" % luc_fc)
 
-        # luit_fc = "OM%s_LANDUSE_INTERSECTION_TABULATION" % omid
-        # print("Creating %s" % luit_fc)
-        # if arcpy.Exists(luit_fc):
-        #     arcpy.Delete_management(luit_fc)
-        # arcpy.TabulateIntersection_analysis(om_fc, "PageNumber", luc_fc, luit_fc, "LU05_DESC;LUCODE")
-        # print("Done creating %s" % luit_fc)
+        luit_fc = "OM%s_LANDUSE_INTERSECTION_TABULATION" % omid
+        print("Creating %s" % luit_fc)
+        if arcpy.Exists(luit_fc):
+            arcpy.Delete_management(luit_fc)
+        arcpy.TabulateIntersection_analysis(om_fc, "PageNumber", luc_fc, luit_fc, "LU05_DESC;LUCODE")
+        print("Done creating %s" % luit_fc)
 
-        # rc_fc = "OM%s_ROAD_CLIP" % omid
-        # print("Creating %s" % rc_fc)
-        # if arcpy.Exists(rc_fc):
-        #     arcpy.Delete_management(rc_fc)
-        # arcpy.Clip_analysis(road_fc, single_overmap_fc, rc_fc)
-        # print("Done creating %s" % rc_fc)
+        rc_fc = "OM%s_ROAD_CLIP" % omid
+        print("Creating %s" % rc_fc)
+        if arcpy.Exists(rc_fc):
+            arcpy.Delete_management(rc_fc)
+        arcpy.Clip_analysis(road_fc, single_overmap_fc, rc_fc)
+        print("Done creating %s" % rc_fc)
 
-        # rit_fc = "OM%s_ROAD_INTERSECTION_TABULATION" % omid
-        # print("Creating %s" % rit_fc)
-        # if arcpy.Exists(rit_fc):
-        #     arcpy.Delete_management(rit_fc)
-        # arcpy.TabulateIntersection_analysis(om_fc, "PageNumber", rc_fc, rit_fc, "RDTYPE")
-        # print("Done creating %s" % rit_fc)
+        rit_fc = "OM%s_ROAD_INTERSECTION_TABULATION" % omid
+        print("Creating %s" % rit_fc)
+        if arcpy.Exists(rit_fc):
+            arcpy.Delete_management(rit_fc)
+        arcpy.TabulateIntersection_analysis(om_fc, "PageNumber", rc_fc, rit_fc, "RDTYPE")
+        print("Done creating %s" % rit_fc)
 
         tc_fc = "OM%s_TRAINS_CLIP" % omid
         print("Creating %s" % tc_fc)
