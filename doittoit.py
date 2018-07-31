@@ -7,6 +7,8 @@ omg_fc = "OVERMAP_GRID"
 landuse_fc = "LANDUSE2005_POLY"
 road_fc = "EOTROADS_ARC"
 towns_fc = "TOWNSSURVEY_POLYM"
+filtered_grid_fc = "OVERMAP_FILTERED_GRID"
+single_overmap_fc = 'SINGLE_OVERMAP'
 
 print("Creating %s" % omg_fc)
 if arcpy.Exists(omg_fc):
@@ -14,33 +16,34 @@ if arcpy.Exists(omg_fc):
 arcpy.GridIndexFeatures_cartography(omg_fc, landuse_fc, "NO_INTERSECTFEATURE", "", "", "4320 meters", "4320 meters")
 print("Done creating %s" % omg_fc)
 
-nonempty_grid_fc = "NONEMPTY_OVERMAP_GRID"
-arcpy.MakeFeatureLayer_management(omg_fc, nonempty_grid_fc)
-arcpy.SelectLayerByLocation_management(nonempty_grid_fc, "INTERSECT", towns_fc)
+print("Creating %s" % filtered_grid_fc)
+if arcpy.Exists(filtered_grid_fc):
+    arcpy.Delete_management(filtered_grid_fc)
+arcpy.MakeFeatureLayer_management(omg_fc, "BLARG")
+arcpy.SelectLayerByLocation_management("BLARG", "INTERSECT", towns_fc)
+arcpy.CopyFeatures_management("BLARG", filtered_grid_fc)
+print("Done creating %s" % filtered_grid_fc)
 
-#arcpy.CopyFeatures_management(nonempty_grid_fc, "OVERMAP_FILTERED_GRID")
-
-with arcpy.da.SearchCursor(omg_fc, "PageNumber", "PageNumber = 1013") as cursor:
-# with arcpy.da.SearchCursor(nonempty_grid_fc, "PageNumber") as cursor:
+with arcpy.da.SearchCursor(filtered_grid_fc, "PageNumber", "PageNumber = 1013") as cursor:
+# with arcpy.da.SearchCursor(filtered_grid_fc, "PageNumber") as cursor:
     for row in cursor:
-        filtered_grid_fc = "OVERMAP_FILTERED_GRID"
         omid = row[0]
-        if arcpy.Exists(filtered_grid_fc):
-            arcpy.Delete_management(filtered_grid_fc)
-        arcpy.MakeFeatureLayer_management(omg_fc, filtered_grid_fc, "PageNumber = %s" % omid)
+        if arcpy.Exists(single_overmap_fc):
+            arcpy.Delete_management(single_overmap_fc)
+        arcpy.MakeFeatureLayer_management(filtered_grid_fc, single_overmap_fc, "PageNumber = %s" % omid)
         
         om_fc = "OM%s_OVERMAP_TERRAIN_GRID" % omid
         print("Creating %s" % om_fc)
         if arcpy.Exists(om_fc):
             arcpy.Delete_management(om_fc)
-        arcpy.GridIndexFeatures_cartography(om_fc, filtered_grid_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180")
+        arcpy.GridIndexFeatures_cartography(om_fc, single_overmap_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180")
         print("Done creating %s" % om_fc)
 
         luc_fc = "OM%s_LANDUSE_CLIP" % omid
         print("Creating %s" % luc_fc)
         if arcpy.Exists(luc_fc):
             arcpy.Delete_management(luc_fc)
-        arcpy.Clip_analysis(landuse_fc, filtered_grid_fc, luc_fc)
+        arcpy.Clip_analysis(landuse_fc, single_overmap_fc, luc_fc)
         print("Done creating %s" % luc_fc)
 
         luit_fc = "OM%s_LANDUSE_INTERSECTION_TABULATION" % omid
@@ -54,7 +57,7 @@ with arcpy.da.SearchCursor(omg_fc, "PageNumber", "PageNumber = 1013") as cursor:
         print("Creating %s" % rc_fc)
         if arcpy.Exists(rc_fc):
             arcpy.Delete_management(rc_fc)
-        arcpy.Clip_analysis(road_fc, filtered_grid_fc, rc_fc)
+        arcpy.Clip_analysis(road_fc, single_overmap_fc, rc_fc)
         print("Done creating %s" % rc_fc)
 
         rit_fc = "OM%s_ROAD_INTERSECTION_TABULATION" % omid
