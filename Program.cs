@@ -1,4 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.IO;
+using System.Linq;
+using Dapper;
+using Microsoft.Data.Sqlite;
 
 namespace geopoiesis
 {
@@ -152,9 +158,11 @@ namespace geopoiesis
         private static void WriteSqlite()
         {
             var sqlitePath = @"H:\cddmap\cataclysm.sqlite3";
-            SQLiteConnection.CreateFile(sqlitePath);
+
+            File.Delete(sqlitePath);
+
             using (var sourceConnection = new SqlConnection("Server=localhost;Database=Cataclysm;Trusted_connection=true"))
-            using (var targetConnection = new SQLiteConnection($"Data Source={sqlitePath};Version=3;"))
+            using (var targetConnection = new SqliteConnection($"Data Source={sqlitePath}"))
             {
                 targetConnection.Open();
                 targetConnection.Execute("create table omt (om_x int, om_y int, omt_x int, omt_y int, landuse_lucode int, road_rdtype int)");
@@ -166,77 +174,103 @@ namespace geopoiesis
                     order by pagenumber
                     ");
 
-                foreach (var om in oms)
+                using (var tx = targetConnection.BeginTransaction())
+                using(var cmd = targetConnection.CreateCommand())
                 {
-                    var sql = $@"
-                        with
-                        temp_landuse as 
-                        (
-	                        select 
-		                        pagenumber, LU05_DESC, lucode, percentage, 
-		                        max(percentage) over (partition by pagenumber) oid_max,
-		                        max(case when lu05_desc = 'Water' then 1 else 0 end) over (partition by pagenumber) water_precedence 
-	                        from om{om.pagenumber}_landuse_intersection_tabulation
-                        ), 
-                        max_landuse as
-                        (
-	                        select *, rank() over (partition by pagenumber order by lucode desc) tiebreaker from temp_landuse where (percentage = oid_max and water_precedence = 0) or (water_precedence = 1 and lu05_desc = 'Water')
-                        ),
-                        tiebreaker_landuse as
-                        (
-                            select * from max_landuse where tiebreaker = 1
-                        ),
-                        temp_road as 
-                        (
-	                        select pagenumber, rdtype, min(rdtype) over (partition by pagenumber) oid_max from om{om.pagenumber}_road_intersection_tabulation
-                        ), 
-                        max_road as
-                        (
-	                        select * from temp_road where rdtype = oid_max 
-                        ),
-                        attributed as
-                        (
-	                        select 
-		                        {om.pagenumber}/69 as om_y,
-		                        {om.pagenumber}%69 as om_x,
-		                        (otg.pagenumber - 1)/180 as omt_y,
-		                        (otg.pagenumber - 1)%180 as omt_x,
-		                        ml.lucode as landuse_lucode,
-		                        mr.rdtype as road_rdtype
-	                        from 
-		                        om{om.pagenumber}_overmap_terrain_grid otg
-		                        left outer join tiebreaker_landuse ml 
-			                        on otg.pagenumber = ml.pagenumber
-		                        left outer join max_road mr 
-			                        on otg.pagenumber = mr.pagenumber
-                        )
-                        select * from attributed 
-                        order by omt_y, omt_x
-                    ";
-                    var sources = sourceConnection.Query(sql);
+                    cmd.Transaction = tx;
 
-                    using (var tx = targetConnection.BeginTransaction())
+                    cmd.CommandText = @"
+                        insert into omt 
+                        (om_x, om_y, omt_x, omt_y, landuse_lucode, road_rdtype) 
+                        values 
+                        ($om_x, $om_y, $omt_x, $omt_y, $landuse_lucode, $road_rdtype)
+                    ";
+
+                    var om_x = cmd.CreateParameter();
+                    om_x.ParameterName = "$om_x";
+
+                    var om_y = cmd.CreateParameter();
+                    om_y.ParameterName = "$om_y";
+
+                    var omt_x = cmd.CreateParameter();
+                    omt_x.ParameterName = "$omt_x";
+
+                    var omt_y = cmd.CreateParameter();
+                    omt_y.ParameterName = "$omt_y";
+
+                    var landuse_lucode = cmd.CreateParameter();
+                    landuse_lucode.ParameterName = "$landuse_lucode";
+
+                    var road_rdtype = cmd.CreateParameter();
+                    road_rdtype.ParameterName = "$road_rdtype";
+
+                    cmd.Parameters.AddRange(new [] { om_x , om_y, omt_x, omt_y, landuse_lucode, road_rdtype});
+
+                    cmd.Prepare();
+
+                    foreach (var om in oms)
                     {
+                        var sql = $@"
+                            with
+                            temp_landuse as 
+                            (
+	                            select 
+		                            pagenumber, LU05_DESC, lucode, percentage, 
+		                            max(percentage) over (partition by pagenumber) oid_max,
+		                            max(case when lu05_desc = 'Water' then 1 else 0 end) over (partition by pagenumber) water_precedence 
+	                            from om{om.pagenumber}_landuse_intersection_tabulation
+                            ), 
+                            max_landuse as
+                            (
+	                            select *, rank() over (partition by pagenumber order by lucode desc) tiebreaker from temp_landuse where (percentage = oid_max and water_precedence = 0) or (water_precedence = 1 and lu05_desc = 'Water')
+                            ),
+                            tiebreaker_landuse as
+                            (
+                                select * from max_landuse where tiebreaker = 1
+                            ),
+                            temp_road as 
+                            (
+	                            select pagenumber, rdtype, min(rdtype) over (partition by pagenumber) oid_max from om{om.pagenumber}_road_intersection_tabulation
+                            ), 
+                            max_road as
+                            (
+	                            select * from temp_road where rdtype = oid_max 
+                            ),
+                            attributed as
+                            (
+	                            select 
+		                            {om.pagenumber}/69 as om_y,
+		                            {om.pagenumber}%69 as om_x,
+		                            (otg.pagenumber - 1)/180 as omt_y,
+		                            (otg.pagenumber - 1)%180 as omt_x,
+		                            ml.lucode as landuse_lucode,
+		                            mr.rdtype as road_rdtype
+	                            from 
+		                            om{om.pagenumber}_overmap_terrain_grid otg
+		                            left outer join tiebreaker_landuse ml 
+			                            on otg.pagenumber = ml.pagenumber
+		                            left outer join max_road mr 
+			                            on otg.pagenumber = mr.pagenumber
+                            )
+                            select * from attributed 
+                            order by omt_y, omt_x
+                        ";
+                        var sources = sourceConnection.Query(sql);
+
                         foreach (var source in sources)
                         {
-                            targetConnection.Execute(@"
-                            insert into omt 
-                            (om_x, om_y, omt_x, omt_y, landuse_lucode, road_rdtype) 
-                            values 
-                            (@om_x, @om_y, @omt_x, @omt_y, @landuse_lucode, @road_rdtype)",
-                                new
-                                {
-                                    source.om_x,
-                                    source.om_y,
-                                    source.omt_x,
-                                    source.omt_y,
-                                    source.landuse_lucode,
-                                    source.road_rdtype
-                                },
-                                tx);
+                            om_x.Value = source.om_x;
+                            om_y.Value = source.om_y;
+                            omt_x.Value = source.omt_x;
+                            omt_y.Value = source.omt_y;
+                            landuse_lucode.Value = source.landuse_lucode ?? DBNull.Value;
+                            road_rdtype.Value = source.road_rdtype ?? DBNull.Value;
+
+                            cmd.ExecuteNonQuery();
                         }
-                        tx.Commit();
                     }
+
+                    tx.Commit();
                 }
             }
         }
