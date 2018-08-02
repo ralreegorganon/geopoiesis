@@ -66,8 +66,8 @@ arcpy.SelectLayerByLocation_management("BLARG", "INTERSECT", subset_source_fc)
 arcpy.CopyFeatures_management("BLARG", subset_grid_fc)
 print("Done creating %s" % subset_grid_fc)
 
-with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber", "PageNumber = 1013") as cursor:
-# with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
+# with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber", "PageNumber = 1013") as cursor:
+with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
     for row in cursor:
         omid = row[0]
 

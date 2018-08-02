@@ -169,8 +169,7 @@ namespace geopoiesis
 
                 sourceConnection.Open();
                 var oms = sourceConnection.Query(@"
-                    select pagename, pagenumber, pagenumber/69 as y, pagenumber%69 as x from overmap_filtered_grid
-                    where pagenumber < 300
+                    select pagename, pagenumber, pagenumber/69 as y, pagenumber%69 as x from overmap_subset_grid
                     order by pagenumber
                     ");
 
@@ -279,9 +278,13 @@ max_mbta_node as
 (
 	select pagenumber, string_agg(terminus, '/') terminus, string_agg(line, '/') line from tabulation_om{om.pagenumber}_mbta_node group by pagenumber 
 ), 
+temp_military_bases as 
+(
+	select *, rank() over (partition by pagenumber order by site_name desc) tiebreaker from tabulation_om{om.pagenumber}_military_bases
+), 
 max_military_bases as 
 (
-	select * from tabulation_om{om.pagenumber}_military_bases
+	select * from temp_military_bases where tiebreaker = 1
 ), 
 temp_townssurvey_polym as 
 (
@@ -305,7 +308,11 @@ temp_trains_arc as
 ), 
 max_trains_arc as
 (
-	select * from temp_trains_arc where length = oid_max 
+	select *, rank() over (partition by pagenumber order by type desc) tiebreaker from temp_trains_arc where length = oid_max 
+),
+tiebreaker_trains_arc as
+(
+	select * from max_trains_arc where tiebreaker = 1
 ),
 max_trains_node as 
 (
@@ -357,7 +364,7 @@ attributed as
 			on otg.pagenumber = mts.pagenumber
 		left outer join max_trails_arc mta
 			on otg.pagenumber = mta.pagenumber
-		left outer join max_trains_arc mtrainza
+		left outer join tiebreaker_trains_arc mtrainza
 			on otg.pagenumber = mtrainza.pagenumber
 		left outer join max_trains_node mtrainzn
 			on otg.pagenumber = mtrainzn.pagenumber
