@@ -167,63 +167,89 @@ select * from attributed
 
         private static void WriteOvermaps()
         {
-            var completeSql = @"
-                with
-                translated as
-                (
+            var subwaySql = @"
                 select 
                     om_x,
                     om_y,
                     omt_x,
                     omt_y,
-	                case 
-		                when landuse_lucode = 40 then 'field'		
-		                when landuse_lucode = 34 then 'cemetery_small_north'	
-		                when landuse_lucode = 15 then 's_gun'	
-		                when landuse_lucode = 23 then 'pond_swamp'
-		                when landuse_lucode = 1 then 'farm_1'	
-		                when landuse_lucode = 3 then 'forest'	
-		                when landuse_lucode = 37 then 'forest_water'	
-		                when landuse_lucode = 26 then 'park'
-		                when landuse_lucode = 11 then 'house'		
-		                when landuse_lucode = 16 then 'small_storage_units'		
-		                when landuse_lucode = 39 then 'toxic_dump'
-		                when landuse_lucode = 13 then 'house'	
-		                when landuse_lucode = 29 then 'fishing_pond_0_0'
-		                when landuse_lucode = 12 then 'house'	
-		                when landuse_lucode = 5 then 'mine'
-		                when landuse_lucode = 10 then 'apartments_con_tower_NE'
-		                when landuse_lucode = 4 then 'pond_swamp'	
-		                when landuse_lucode = 36 then 'orchard_tree_apple'
-		                when landuse_lucode = 6 then 'field'	
-		                when landuse_lucode = 35 then 'orchard_tree_apple'
-		                when landuse_lucode = 7 then 'park'		
-		                when landuse_lucode = 2 then 'farm_1'
-		                when landuse_lucode = 24 then 'pwr_sub_s'	
-		                when landuse_lucode = 25 then 'dirtlot'
-		                when landuse_lucode = 14 then 'pond_swamp'
-		                when landuse_lucode = 8 then 'gym'
-		                when landuse_lucode = 17 then 'field'	
-		                when landuse_lucode = 18 then 'field'
-		                when landuse_lucode = 31 then 'police_north'	
-		                when landuse_lucode = 38 then 'house' 
-		                when landuse_lucode = 19 then 'sewage_treatment' 
-		                when landuse_lucode = 20 then 'river'     
-		                when landuse_lucode = 9 then 'fishing_pond_0_0'		   
-		                else 'river'
-	                end	omt,
+                    case 
+    	                when transitstation_line is not null and subway_grade is not null then 'sub_station'
+    	                when subway_grade is not null then 'subway_east'
+                        else 'empty_rock'
+                    end as omt 
+                from omt  
+                where om_x >= 40 and om_x < 45	and om_y >= 10 and om_y < 15
+                order by om_y, om_x, omt_y, omt_x
+
+            ";
+
+            var aboveSql = @"
+                with
+                translated as
+                (
+                select 
+                    *,
+                    case 
+                        when landuse_lucode = 40 then 'field'		
+                        when landuse_lucode = 34 then 'cemetery_small_north'	
+                        when landuse_lucode = 15 then 's_gun'	
+                        when landuse_lucode = 23 then 'pond_swamp'
+                        when landuse_lucode = 1 then 'farm_1'	
+                        when landuse_lucode = 3 then 'forest'	
+                        when landuse_lucode = 37 then 'forest_water'	
+                        when landuse_lucode = 26 then 'park'
+                        when landuse_lucode = 11 then 'house'		
+                        when landuse_lucode = 16 then 'small_storage_units'		
+                        when landuse_lucode = 39 then 'toxic_dump'
+                        when landuse_lucode = 13 then 'house'	
+                        when landuse_lucode = 29 then 'fishing_pond_0_0'
+                        when landuse_lucode = 12 then 'house'	
+                        when landuse_lucode = 5 then 'mine'
+                        when landuse_lucode = 10 then 'apartments_con_tower_NE'
+                        when landuse_lucode = 4 then 'pond_swamp'	
+                        when landuse_lucode = 36 then 'orchard_tree_apple'
+                        when landuse_lucode = 6 then 'field'	
+                        when landuse_lucode = 35 then 'orchard_tree_apple'
+                        when landuse_lucode = 7 then 'park'		
+                        when landuse_lucode = 2 then 'farm_1'
+                        when landuse_lucode = 24 then 'pwr_sub_s'	
+                        when landuse_lucode = 25 then 'dirtlot'
+                        when landuse_lucode = 14 then 'pond_swamp'
+                        when landuse_lucode = 8 then 'gym'
+                        when landuse_lucode = 17 then 'field'	
+                        when landuse_lucode = 18 then 'field'
+                        when landuse_lucode = 31 then 'police_north'	
+                        when landuse_lucode = 38 then 'house' 
+                        when landuse_lucode = 19 then 'sewage_treatment' 
+                        when landuse_lucode = 20 then 'river'     
+                        when landuse_lucode = 9 then 'fishing_pond_0_0'		   
+                    end	omt,
                     case
                         when road_rdtype is not null then 'road_ns'
                     end road
-	                from omt
+                    from omt
                 )
                 select 
                     om_x,
                     om_y,
                     omt_x,
                     omt_y,
-                    case when road is not null then road else omt end as omt from translated  
-                where om_x = 47	and om_y = 14
+                    case 
+    	                when trails_class is not null then 'NatureTrail_1a'
+                        when transitstation_line is not null and subway_grade is not null then 'sub_station'
+    	                when transitstation_line is not null then 'tower_lab_finale'
+    	                when trains_type in (1, 2) then 'bank'
+                        when trains_type is not null then 'field'
+    	                when trainstation_c_railstat = 1 or trainstation_amtrak = 1 then 'lab_train_depot'
+    	                when road is not null then road 
+    	                when militarybase_sitename is not null then 'bunker'
+    	                when omt is not null then omt
+    	                when oceanmask_isocean = 1 then 'river'
+    	                else 'forest'
+	                end as omt 
+                from translated  
+                where om_x >= 42 and om_x < 49	and om_y >= 11 and om_y < 18
                 order by om_y, om_x, omt_y, omt_x
                 ";
 
@@ -231,7 +257,7 @@ select * from attributed
 
             using (var c = new SqliteConnection($"Data Source={sqlitePath}"))
             {
-                var result = c.Query<OvermapTerrain>(completeSql);
+                var result = c.Query<OvermapTerrain>(aboveSql);
 
                 var overmaps = result.GroupBy(x => (x.om_x, x.om_y));
 
