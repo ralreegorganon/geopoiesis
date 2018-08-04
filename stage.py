@@ -2,8 +2,8 @@ import arcpy
 
 arcpy.env.overwriteOutput = True
 
-fgdb = "H:\cddmap\data\catamass.gdb\\"
-egdb = "C:\Users\jj\AppData\Roaming\ESRI\Desktop10.6\ArcCatalog\cataclysm@localhost.sde\\"
+fgdb = "H:\cddmap\data\catamasswithstructures.gdb\\"
+egdb = "C:\Users\jj\AppData\Roaming\ESRI\Desktop10.6\ArcCatalog\cataclysm2@localhost.sde\\"
 
 attributes = [
     ("LANDUSE2005_POLY", "LU05_DESC;LUCODE"),
@@ -18,7 +18,9 @@ attributes = [
     ("TRAILS_ARC", "CLASS"),
 ]
 
-with arcpy.da.SearchCursor(fgdb + "OVERMAP_SUBSET_GRID", "PageNumber") as cursor:
+arcpy.Copy_management(fgdb + "OVERMAP_SUBSET_GRID", egdb + "OVERMAP_SUBSET_GRID")
+
+with arcpy.da.SearchCursor(fgdb + "OVERMAP_SUBSET_GRID", "PageNumber", "PageNumber in (1012, 1013, 1014)") as cursor:
     for row in cursor:
         omid = row[0]
 

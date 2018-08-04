@@ -160,9 +160,9 @@ select * from attributed
 
         static void Main(string[] args)
         {
-            //CreateOrReplaceViews();
-            //WriteSqlite();
-            WriteOvermaps();
+            CreateOrReplaceViews();
+            WriteSqlite();
+            //WriteOvermaps();
         }
 
         private static void WriteOvermaps()
@@ -252,7 +252,7 @@ select * from attributed
                 order by om_y, om_x, omt_y, omt_x
                 ";
 
-            var sqlitePath = @"H:\cddmap\cataclysm.sqlite3";
+            var sqlitePath = @"H:\cddmap\cataclysm2.sqlite3";
 
             using (var c = new SqliteConnection($"Data Source={sqlitePath}"))
             {
@@ -301,11 +301,12 @@ select * from attributed
 
         private static void CreateOrReplaceViews()
         {
-            using (var c = new SqlConnection("Server=localhost;Database=Cataclysm;Trusted_connection=true"))
+            using (var c = new SqlConnection("Server=localhost;Database=Cataclysm2;Trusted_connection=true"))
             {
                 c.Open();
                 var oms = c.Query(@"
                     select pagename, pagenumber, pagenumber/69 as y, pagenumber%69 as x from overmap_subset_grid
+                    where pagenumber in (1012, 1013, 1014)
                     order by pagenumber
                     ");
 
@@ -319,11 +320,11 @@ select * from attributed
 
         private static void WriteSqlite()
         {
-            var sqlitePath = @"H:\cddmap\cataclysm.sqlite3";
+            var sqlitePath = @"H:\cddmap\cataclysm2.sqlite3";
 
             File.Delete(sqlitePath);
 
-            using (var sourceConnection = new SqlConnection("Server=localhost;Database=Cataclysm;Trusted_connection=true"))
+            using (var sourceConnection = new SqlConnection("Server=localhost;Database=Cataclysm2;Trusted_connection=true"))
             using (var targetConnection = new SqliteConnection($"Data Source={sqlitePath}"))
             {
                 targetConnection.Open();
@@ -332,6 +333,7 @@ select * from attributed
                 sourceConnection.Open();
                 var oms = sourceConnection.Query(@"
                     select pagename, pagenumber, pagenumber/69 as y, pagenumber%69 as x from overmap_subset_grid
+                    where pagenumber in (1012, 1013, 1014)
                     order by pagenumber
                     ");
 
