@@ -112,8 +112,8 @@ attributed as
 		otg.pagenumber,
 		{0}/69 as om_y,
 		{0}%69 as om_x,
-		(otg.pagenumber - 1)/180 as omt_y,
-		(otg.pagenumber - 1)%180 as omt_x,
+		otg.pagenumber/180 as omt_y,
+		otg.pagenumber%180 as omt_x,
 		ml.lucode as landuse_lucode,
 		mr.rdtype as road_rdtype,
 		mmbtas.grade as subway_grade,
@@ -249,7 +249,6 @@ select * from attributed
     	                else 'forest'
 	                end as omt 
                 from translated  
-                where om_x >= 42 and om_x < 49	and om_y >= 11 and om_y < 18
                 order by om_y, om_x, omt_y, omt_x
                 ";
 

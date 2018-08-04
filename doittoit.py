@@ -1,6 +1,6 @@
 import arcpy
 
-arcpy.env.workspace = "H:\cddmap\data\catamass.gdb"
+arcpy.env.workspace = "H:\cddmap\data\catamasswithstructures.gdb"
 
 omg_fc = "OVERMAP_GRID"
 subset_grid_fc = "OVERMAP_SUBSET_GRID"
@@ -20,9 +20,10 @@ attributes = [
     ("MILITARY_BASES", "COMPONENT;SITE_NAME"),
     ("OCEANMASK_POLY", ""),
     ("TRAILS_ARC", "CLASS"),
+    ("STRUCTURE_POLY", "STRUCT_ID;AREA_SQ_FT"),
 ]
 
-recreate_if_exists = False
+recreate_if_exists = True
 
 def nuke(fc):
     if arcpy.Exists(fc):
@@ -56,7 +57,7 @@ def clip_and_tabulate(omid, source_fc, fields):
 
 print("Creating %s" % omg_fc)
 nuke(omg_fc)
-arcpy.GridIndexFeatures_cartography(omg_fc, grid_source_fc, "NO_INTERSECTFEATURE", "", "", "4320 meters", "4320 meters")
+arcpy.GridIndexFeatures_cartography(omg_fc, grid_source_fc, "NO_INTERSECTFEATURE", "", "", "4320 meters", "4320 meters", "", "", "", "0")
 print("Done creating %s" % omg_fc)
 
 print("Creating %s" % subset_grid_fc)
@@ -66,8 +67,8 @@ arcpy.SelectLayerByLocation_management("BLARG", "INTERSECT", subset_source_fc)
 arcpy.CopyFeatures_management("BLARG", subset_grid_fc)
 print("Done creating %s" % subset_grid_fc)
 
-# with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber", "PageNumber = 1013") as cursor:
-with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
+with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber", "PageNumber = 1013") as cursor:
+# with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
     for row in cursor:
         omid = row[0]
 
@@ -81,9 +82,9 @@ with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
 
         if om_fc_exists and recreate_if_exists:
             arcpy.Delete_management(om_fc)
-            arcpy.GridIndexFeatures_cartography(om_fc, single_overmap_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180")
+            arcpy.GridIndexFeatures_cartography(om_fc, single_overmap_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180", "0")
         elif not om_fc_exists:
-            arcpy.GridIndexFeatures_cartography(om_fc, single_overmap_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180")
+            arcpy.GridIndexFeatures_cartography(om_fc, single_overmap_fc, "NO_INTERSECTFEATURE", "", "", "24 meters", "24 meters", "", "180", "180", "0")
 
         for attribute in attributes:
             clip_and_tabulate(omid, attribute[0], attribute[1])
