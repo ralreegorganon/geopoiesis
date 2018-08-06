@@ -16,11 +16,12 @@ attributes = [
     ("MILITARY_BASES", "COMPONENT;SITE_NAME"),
     ("OCEANMASK_POLY", ""),
     ("TRAILS_ARC", "CLASS"),
+    ("STRUCTURE_POLY", "STRUCT_ID;AREA_SQ_FT"),
 ]
 
 arcpy.Copy_management(fgdb + "OVERMAP_SUBSET_GRID", egdb + "OVERMAP_SUBSET_GRID")
 
-with arcpy.da.SearchCursor(fgdb + "OVERMAP_SUBSET_GRID", "PageNumber", "PageNumber in (1012, 1013, 1014)") as cursor:
+with arcpy.da.SearchCursor(fgdb + "OVERMAP_SUBSET_GRID", "PageNumber") as cursor:
     for row in cursor:
         omid = row[0]
 

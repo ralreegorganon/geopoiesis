@@ -70,8 +70,8 @@ print("Done creating %s" % subset_grid_fc)
 arcpy.Delete_management(omg_fc)
 arcpy.Delete_management("BLARG")
 
-with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber", "PageNumber in (1012, 1013, 1014)") as cursor:
-# with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
+# with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber", "PageNumber in (1012, 1013, 1014)") as cursor:
+with arcpy.da.SearchCursor(subset_grid_fc, "PageNumber") as cursor:
     for row in cursor:
         omid = row[0]
 
