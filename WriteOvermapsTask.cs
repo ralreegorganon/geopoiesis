@@ -9,6 +9,7 @@ namespace geopoiesis
     public class WriteOvermapsTask
     {
         private string sqlitePath;
+        private string overmapOutputPath;
 
         private string subwaySql = @"
             select 
@@ -22,6 +23,7 @@ namespace geopoiesis
                     else 'empty_rock'
                 end as omt 
             from omt  
+            where om_x = 66 and om_y = 42
             order by om_y, om_x, omt_y, omt_x
         ";
 
@@ -32,39 +34,39 @@ namespace geopoiesis
                 select 
                     *,
                     case 
-                        when land_use_code = 40 then 'field'		
-                        when land_use_code = 34 then 'cemetery_small_north'	
-                        when land_use_code = 15 then 's_gun'	
-                        when land_use_code = 23 then 'pond_swamp'
-                        when land_use_code = 1 then 'farm_1'	
-                        when land_use_code = 3 then 'forest'	
-                        when land_use_code = 37 then 'forest_water'	
-                        when land_use_code = 26 then 'park'
-                        when land_use_code = 11 then 'house'		
-                        when land_use_code = 16 then 'small_storage_units'		
-                        when land_use_code = 39 then 'toxic_dump'
-                        when land_use_code = 13 then 'house'	
-                        when land_use_code = 29 then 'fishing_pond_0_0'
-                        when land_use_code = 12 then 'house'	
-                        when land_use_code = 5 then 'mine'
-                        when land_use_code = 10 then 'apartments_con_tower_NE'
-                        when land_use_code = 4 then 'pond_swamp'	
-                        when land_use_code = 36 then 'orchard_tree_apple'
-                        when land_use_code = 6 then 'field'	
-                        when land_use_code = 35 then 'orchard_tree_apple'
-                        when land_use_code = 7 then 'park'		
-                        when land_use_code = 2 then 'farm_1'
-                        when land_use_code = 24 then 'pwr_sub_s'	
-                        when land_use_code = 25 then 'dirtlot'
-                        when land_use_code = 14 then 'pond_swamp'
-                        when land_use_code = 8 then 'gym'
-                        when land_use_code = 17 then 'field'	
-                        when land_use_code = 18 then 'field'
-                        when land_use_code = 31 then 'police_north'	
-                        when land_use_code = 38 then 'house' 
-                        when land_use_code = 19 then 'sewage_treatment' 
-                        when land_use_code = 20 then 'river'     
-                        when land_use_code = 9 then 'fishing_pond_0_0'		   
+                    when land_use_code = 40 then 'field'		
+                    when land_use_code = 34 then 'cemetery_small_north'	
+                    when land_use_code = 15 then 's_gun_north'	
+                    when land_use_code = 23 then 'pond_swamp'
+                    when land_use_code = 1 then 'farm_1'	
+                    when land_use_code = 3 then 'forest'	
+                    when land_use_code = 37 then 'forest_water'	
+                    when land_use_code = 26 then 'park'
+                    when land_use_code = 11 then 'house_north'		
+                    when land_use_code = 16 then 'small_storage_units_north'		
+                    when land_use_code = 39 then 'toxic_dump'
+                    when land_use_code = 13 then 'house_north'	
+                    when land_use_code = 29 then 'fishing_pond_0_0_north'
+                    when land_use_code = 12 then 'house_north'	
+                    when land_use_code = 5 then 'mine'
+                    when land_use_code = 10 then 'apartments_con_tower_NE_north'
+                    when land_use_code = 4 then 'pond_swamp'	
+                    when land_use_code = 36 then 'orchard_tree_apple'
+                    when land_use_code = 6 then 'field'	
+                    when land_use_code = 35 then 'orchard_tree_apple'
+                    when land_use_code = 7 then 'park'		
+                    when land_use_code = 2 then 'farm_1_north'
+                    when land_use_code = 24 then 'pwr_sub_s'	
+                    when land_use_code = 25 then 'dirtlot'
+                    when land_use_code = 14 then 'pond_swamp'
+                    when land_use_code = 8 then 'gym'
+                    when land_use_code = 17 then 'field'	
+                    when land_use_code = 18 then 'spiral'
+                    when land_use_code = 31 then 'police_north'	
+                    when land_use_code = 38 then 'house_north' 
+                    when land_use_code = 19 then 'sewage_treatment' 
+                    when land_use_code = 20 then 'river_north'     
+                    when land_use_code = 9 then 'fishing_pond_0_0_north'		   
                     end	omt,
                     case
                         when primary_road_type is not null then 'road_ns'
@@ -78,27 +80,30 @@ namespace geopoiesis
                 omt_x,
                 omt_y,
                 case 
-    	            when trail_class is not null then 'NatureTrail_1a'
-                    when transit_station_line is not null and subway_primary_line is not null then 'sub_station'
+    	            when trail_class is not null then 'NatureTrail_1a_north'
+                    when transit_station_line is not null and subway_primary_line is not null then 'sub_station_north'
     	            when transit_station_line is not null then 'tower_lab_finale'
-    	            when train_type in (1, 2) then 'bank'
+    	            when train_type in (1, 2) then 'bank_north'
                     when train_type is not null then 'field'
     	            when station = 1 then 'lab_train_depot'
     	            when primary_road_type is not null then road 
-    	            when military_base_name is not null then 'bunker'
+    	            when military_base_name is not null then 'bunker_north'
     	            when omt is not null then omt
-    	            when ocean = 1 then 'river'
+    	            when ocean = 1 then 'river_north'
     	            else 'forest'
 	            end as omt 
             from 
                 translated
+            where 
+                om_x = 66 and om_y = 42
             order by 
                 om_y, om_x, omt_y, omt_x
         ";
 
-        public WriteOvermapsTask(string sqlitePath)
+        public WriteOvermapsTask(string sqlitePath, string overmapOutputPath)
         {
             this.sqlitePath = sqlitePath;
+            this.overmapOutputPath = overmapOutputPath;
         }
 
         public void Execute()
@@ -123,7 +128,7 @@ namespace geopoiesis
                     template[11] = z9Text;
                     template[12] = z10Text;
 
-                    File.WriteAllLines($@"F:\code\cpp\Cataclysm-DDA\save\Hacks\o.{key.Item1}.{key.Item2}", template);
+                    File.WriteAllLines(string.Format(overmapOutputPath, key.Item1, key.Item2), template);
                 }
             }
         }
