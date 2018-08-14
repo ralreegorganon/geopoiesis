@@ -23,7 +23,7 @@ namespace geopoiesis
                     else 'empty_rock'
                 end as omt 
             from omt  
-            where om_x = 66 and om_y = 42
+            where om_x between 50 and 51 and om_y between 10 and 11
             order by om_y, om_x, omt_y, omt_x
         ";
 
@@ -94,8 +94,7 @@ namespace geopoiesis
 	            end as omt 
             from 
                 translated
-            where 
-                om_x = 66 and om_y = 42
+            where om_x between 50 and 51 and om_y between 10 and 11
             order by 
                 om_y, om_x, omt_y, omt_x
         ";
