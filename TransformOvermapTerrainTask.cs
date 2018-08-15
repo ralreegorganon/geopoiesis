@@ -5,7 +5,9 @@ using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using QuickGraph;
-using QuickGraph.Algorithms.MinimumSpanningTree;
+using QuickGraph.Algorithms.ConnectedComponents;
+using QuickGraph.Algorithms.Observers;
+using QuickGraph.Algorithms.Search;
 
 namespace geopoiesis
 {
@@ -23,7 +25,7 @@ namespace geopoiesis
         public void Execute()
         {
             List<Omt> all = null;
-            var g = new UndirectedGraph<Omt, OmtConnection>(false);
+            var g = new BidirectionalGraph<Omt, OmtConnection>();
 
             using (var c = new SqliteConnection($"Data Source={sqlitePath}"))
             {
@@ -42,7 +44,7 @@ namespace geopoiesis
                     from 
                         omt 
                     where 
-                        om_x = 22 and om_y = 22
+                        om_x = 46 and om_y = 14
                     order by
                         om_pagenumber,
                         omt_pagenumber
@@ -97,62 +99,88 @@ namespace geopoiesis
                         }
                     }
 
-                    // NW
-                    if (i % 180 > 0 && i > 179)
-                    {
-                        var west = all[i - 181];
-                        if (west.PrimaryRoadType != -1)
-                        {
-                            g.AddVerticesAndEdge(new OmtConnection(current, west, false));
-                        }
-                    }
+                    //// NW
+                    //if (i % 180 > 0 && i > 179)
+                    //{
+                    //    var west = all[i - 181];
+                    //    if (west.PrimaryRoadType != -1)
+                    //    {
+                    //        g.AddVerticesAndEdge(new OmtConnection(current, west, false));
+                    //    }
+                    //}
 
-                    // NE
-                    if ((i % 179 != 0 || i == 0) && i > 179)
-                    {
-                        var east = all[i - 179];
-                        if (east.PrimaryRoadType != -1)
-                        {
-                            g.AddVerticesAndEdge(new OmtConnection(current, east, false));
-                        }
-                    }
+                    //// NE
+                    //if ((i % 179 != 0 || i == 0) && i > 179)
+                    //{
+                    //    var east = all[i - 179];
+                    //    if (east.PrimaryRoadType != -1)
+                    //    {
+                    //        g.AddVerticesAndEdge(new OmtConnection(current, east, false));
+                    //    }
+                    //}
 
-                    // SW
-                    if (i < 32220 && i % 180 > 0)
-                    {
-                        var north = all[i + 179];
-                        if (north.PrimaryRoadType != -1)
-                        {
-                            g.AddVerticesAndEdge(new OmtConnection(current, north, false));
-                        }
-                    }
+                    //// SW
+                    //if (i < 32220 && i % 180 > 0)
+                    //{
+                    //    var north = all[i + 179];
+                    //    if (north.PrimaryRoadType != -1)
+                    //    {
+                    //        g.AddVerticesAndEdge(new OmtConnection(current, north, false));
+                    //    }
+                    //}
 
-                    // SE
-                    if (i < 32220 && (i % 179 != 0 || i == 0))
-                    {
-                        var south = all[i + 181];
-                        if (south.PrimaryRoadType != -1)
-                        {
-                            g.AddVerticesAndEdge(new OmtConnection(current, south, false));
-                        }
-                    }
+                    //// SE
+                    //if (i < 32220 && (i % 179 != 0 || i == 0))
+                    //{
+                    //    var south = all[i + 181];
+                    //    if (south.PrimaryRoadType != -1)
+                    //    {
+                    //        g.AddVerticesAndEdge(new OmtConnection(current, south, false));
+                    //    }
+                    //}
                 }
             }
 
-            var sources = g.Vertices.Where(x => g.AdjacentDegree(x) > 4)
-                .Where(x =>
-                {
-                    var adjacentEdges = g.AdjacentEdges(x);
-                    var c = adjacentEdges.Where(z => z.IsPrimary)
-                        .Any(y => !Equals(y.Target, x) && g.AdjacentDegree(y.Target) > 4);
-                    return c;
-                })
-                .ToList();
+            Prune(g, all);
 
-            foreach (var s in sources)
-            {
-                s.PrimaryRoadType = -2;
-            }
+            // var cc = new WeaklyConnectedComponentsAlgorithm<Omt, OmtConnection>(g);
+            // cc.Compute();
+
+            // var components = cc.Components.Values.Distinct().ToList();
+
+            // var ap = new List<Omt>();
+            // foreach (var i in components)
+            // {
+            //     var root = cc.Components.First(x => x.Value == i).Key;
+            //     ap.AddRange(FindCutPoints(g, root).Keys);
+            // }
+
+
+
+            // var potentialCuts = all.Where(x => {
+            //         var isRoad = x.PrimaryRoadType != -1;
+            //         var gotEdges = g.TryGetOutEdges(x, out var outEdges);
+            //         return isRoad && gotEdges && outEdges.Count() > 2;
+            //     })
+            //     .Except(ap)
+            //     .ToList();
+
+            // var pcLookup = potentialCuts.ToDictionary(k => k, v => 0);
+
+            // foreach (var a in potentialCuts)
+            // {
+            ////     a.PrimaryRoadType = -3;
+            // }
+
+            // var actualCuts = potentialCuts.Where(x => {
+            //     return g.OutEdges(x)
+            //         .Count(y => pcLookup.ContainsKey(y.Target)) == 4;
+            // }).ToList();
+
+            // foreach (var a in actualCuts)
+            // {
+            //     a.PrimaryRoadType = -1;
+            // }
 
             var z10overmaps = all.GroupBy(x => (x.OmX, x.OmY)).ToDictionary(k => k.Key, v => v.ToList());
 
@@ -170,6 +198,191 @@ namespace geopoiesis
             }
         }
 
+        private void Prune(BidirectionalGraph<Omt, OmtConnection> g, List<Omt> all)
+        {
+            bool doItToIt;
+            do
+            {
+                var cc = new WeaklyConnectedComponentsAlgorithm<Omt, OmtConnection>(g);
+                cc.Compute();
+
+                var components = cc.Components.Values.Distinct()
+                    .ToList();
+
+                var ap = new List<Omt>();
+                foreach (var i in components)
+                {
+                    var root = cc.Components.First(x => x.Value == i)
+                        .Key;
+                    ap.AddRange(FindCutPoints(g, root)
+                        .Keys);
+                }
+
+                var potentialCuts = all.Where(x => {
+                        var isRoad = x.PrimaryRoadType != -1;
+                        var gotEdges = g.TryGetOutEdges(x, out var outEdges);
+                        return isRoad && gotEdges && outEdges.Count() > 2;
+                    })
+                    .Except(ap)
+                    .ToList();
+
+                var pcLookup = potentialCuts.ToDictionary(k => k, v => 0);
+
+                var actualCuts = potentialCuts.Where(x => {
+                    return g.OutEdges(x)
+                        .Count(y => pcLookup.ContainsKey(y.Target)) == 4;
+                }).ToList();
+
+                var doEmAll = true;
+
+                if (actualCuts.Count == 0)
+                {
+                    actualCuts = potentialCuts.Where(x => {
+                            return g.OutEdges(x)
+                                .Count(y => pcLookup.ContainsKey(y.Target)) == 3;
+                        })
+                        .ToList();
+                    doEmAll = false;
+                }
+
+                if (actualCuts.Count == 0)
+                {
+                    actualCuts = potentialCuts.Where(x => {
+                            return g.OutEdges(x)
+                                .Count(y => pcLookup.ContainsKey(y.Target)) == 2;
+                        })
+                        .ToList();
+                }
+
+                if (actualCuts.Count == 0)
+                {
+                    actualCuts = potentialCuts.Where(x =>
+                    {
+                        return g.OutEdges(x)
+                            .Count(y => pcLookup.ContainsKey(y.Target)) == 1;
+                    }).ToList();
+                }
+
+                if (actualCuts.Count == 0)
+                {
+                    actualCuts = potentialCuts.Where(x =>
+                    {
+                        return g.OutEdges(x)
+                            .Count(y => pcLookup.ContainsKey(y.Target)) == 0;
+                    }).ToList();
+                }
+
+                doItToIt = actualCuts.Count > 0;
+
+                if (!doItToIt) continue;
+
+                if (!doEmAll)
+                {
+                    actualCuts = actualCuts.Take(1)
+                        .ToList();
+                }
+
+                foreach (var v in actualCuts)
+                {
+                    v.PrimaryRoadType = -1;
+                    g.RemoveVertex(v);
+                }
+
+            } while (doItToIt);
+        }
+
+        private void PruneOriginal(BidirectionalGraph<Omt, OmtConnection> g, List<Omt> all)
+        {
+            bool doItToIt;
+            do
+            {
+                var cc = new WeaklyConnectedComponentsAlgorithm<Omt, OmtConnection>(g);
+                cc.Compute();
+
+                var components = cc.Components.Values.Distinct()
+                    .ToList();
+
+                var ap = new List<Omt>();
+                foreach (var i in components)
+                {
+                    var root = cc.Components.First(x => x.Value == i)
+                        .Key;
+                    ap.AddRange(FindCutPoints(g, root)
+                        .Keys);
+                }
+
+                var potentialCuts = all.Where(x => {
+                        var isRoad = x.PrimaryRoadType != -1;
+                        var gotEdges = g.TryGetOutEdges(x, out var outEdges);
+                        return isRoad && gotEdges && outEdges.Count() > 2;
+                    })
+                    .Except(ap)
+                    .ToList();
+
+                doItToIt = potentialCuts.Count > 0;
+
+                if (!doItToIt) continue;
+
+                var nuke = potentialCuts.First();
+                nuke.PrimaryRoadType = -1;
+                g.RemoveVertex(nuke);
+            } while (doItToIt);
+        }
+
+        private Dictionary<Omt, bool> FindCutPoints(BidirectionalGraph<Omt, OmtConnection> g, Omt root)
+        {
+            var ap = new Dictionary<Omt, bool>();
+            var lowD = new Dictionary<Omt, int>();
+            var obs = new VertexPredecessorRecorderObserver<Omt, OmtConnection>();
+            var obs2 = new VertexTimeStamperObserver<Omt, OmtConnection>();
+            var dfs = new DepthFirstSearchAlgorithm<Omt, OmtConnection>(g);
+            using (obs.Attach(dfs))
+            using (obs2.Attach(dfs))
+            {
+
+                dfs.DiscoverVertex += v => {
+                    lowD[v] = obs2.DiscoverTimes[v];
+                };
+
+                dfs.FinishVertex += u => {
+                    var outs = dfs.VisitedGraph.OutEdges(u);
+
+                    foreach (var oe in outs)
+                    {
+                        var v = oe.Target;
+
+                        lowD[u] = Math.Min(lowD[u], lowD[v]);
+
+                        obs.VertexPredecessors.TryGetValue(u, out var pp);
+                        if (pp == null && g.Degree(u) > 1)
+                        {
+                            ap[u] = true;
+                        }
+
+                        if (pp != null && lowD[v] >= obs2.DiscoverTimes[u])
+                        {
+                            ap[u] = true;
+                        }
+                    }
+                };
+
+                dfs.BackEdge += connection => {
+                    var u = connection.Source;
+                    var v = connection.Target;
+
+                    if (obs.VertexPredecessors[u]
+                        .Source != v)
+                    {
+                        lowD[u] = Math.Min(lowD[u], obs2.DiscoverTimes[v]);
+                    }
+
+                };
+
+                dfs.Compute(root);
+            }
+            return ap;
+        }
+
         private string OvermapTerrainToText(List<Omt> omt)
         {
             OvermapTerrainGroup current = null;
@@ -178,7 +391,7 @@ namespace geopoiesis
 
             foreach (var r in omt)
             {
-                if (Type(r.LandUseCode.Value, r.PrimaryRoadType.Value) == current?.Type)
+                if (Type(r.LandUseCode.Value, r.PrimaryRoadType.Value, r.OmtPagenumber) == current?.Type)
                 {
                     current.Count++;
                 }
@@ -190,7 +403,7 @@ namespace geopoiesis
                     }
 
                     current = new OvermapTerrainGroup {
-                        Type = Type(r.LandUseCode.Value, r.PrimaryRoadType.Value),
+                        Type = Type(r.LandUseCode.Value, r.PrimaryRoadType.Value, r.OmtPagenumber),
                         Count = 1
                     };
                 }
@@ -203,8 +416,13 @@ namespace geopoiesis
             return outer;
         }
 
-        private string Type(int landUseCode, int roadType)
+        private string Type(int landUseCode, int roadType, int pageNumber)
         {
+            if (pageNumber == 133)
+            {
+                return "pwr_sub_s";
+            }
+
             if (roadType == -3)
             {
                 return "sewage_treatment";
@@ -212,7 +430,7 @@ namespace geopoiesis
 
             if (roadType == -2)
             {
-                return "sewage_treatment";
+                return "pwr_sub_s";
             }
 
             if (roadType > 0)
