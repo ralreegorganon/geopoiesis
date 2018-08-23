@@ -26,6 +26,7 @@ namespace geopoiesis
         {
             List<Omt> all = null;
             var g = new BidirectionalGraph<Omt, OmtConnection>();
+            var g2 = new BidirectionalGraph<Omt, OmtConnection>();
 
             using (var c = new SqliteConnection($"Data Source={sqlitePath}"))
             {
@@ -44,6 +45,7 @@ namespace geopoiesis
                     from 
                         omt 
                     where 
+                        --om_x = 65 and om_y = 41
                         om_x = 46 and om_y = 14
                     order by
                         om_pagenumber,
@@ -66,6 +68,7 @@ namespace geopoiesis
                         if (west.PrimaryRoadType != -1)
                         {
                             g.AddVerticesAndEdge(new OmtConnection(current, west, true));
+                            g2.AddVerticesAndEdge(new OmtConnection(current, west, true));
                         }
                     }
 
@@ -76,6 +79,7 @@ namespace geopoiesis
                         if (east.PrimaryRoadType != -1)
                         {
                             g.AddVerticesAndEdge(new OmtConnection(current, east, true));
+                            g2.AddVerticesAndEdge(new OmtConnection(current, east, true));
                         }
                     }
 
@@ -86,6 +90,7 @@ namespace geopoiesis
                         if (north.PrimaryRoadType != -1)
                         {
                             g.AddVerticesAndEdge(new OmtConnection(current, north, true));
+                            g2.AddVerticesAndEdge(new OmtConnection(current, north, true));
                         }
                     }
 
@@ -96,81 +101,83 @@ namespace geopoiesis
                         if (south.PrimaryRoadType != -1)
                         {
                             g.AddVerticesAndEdge(new OmtConnection(current, south, true));
+                            g2.AddVerticesAndEdge(new OmtConnection(current, south, true));
                         }
                     }
 
                     //// NW
-                    //if (i % 180 > 0 && i > 179)
-                    //{
-                    //    var west = all[i - 181];
-                    //    if (west.PrimaryRoadType != -1)
-                    //    {
-                    //        g.AddVerticesAndEdge(new OmtConnection(current, west, false));
-                    //    }
-                    //}
+                    if ((i % 180) > 0 && i > 179)
+                    {
+                        var west = all[i - 181];
+                        if (west.PrimaryRoadType != -1)
+                        {
+                            g2.AddVerticesAndEdge(new OmtConnection(current, west, false));
+                        }
+                    }
 
-                    //// NE
-                    //if ((i % 179 != 0 || i == 0) && i > 179)
-                    //{
-                    //    var east = all[i - 179];
-                    //    if (east.PrimaryRoadType != -1)
-                    //    {
-                    //        g.AddVerticesAndEdge(new OmtConnection(current, east, false));
-                    //    }
-                    //}
+                    // NE
+                    if (((i % 179 != 0) || i == 0) && i > 179)
+                    {
+                        var east = all[i - 179];
+                        if (east.PrimaryRoadType != -1)
+                        {
+                            g2.AddVerticesAndEdge(new OmtConnection(current, east, false));
+                        }
+                    }
 
-                    //// SW
-                    //if (i < 32220 && i % 180 > 0)
-                    //{
-                    //    var north = all[i + 179];
-                    //    if (north.PrimaryRoadType != -1)
-                    //    {
-                    //        g.AddVerticesAndEdge(new OmtConnection(current, north, false));
-                    //    }
-                    //}
+                    // SW
+                    if (i < 32220 && (i % 180) > 0)
+                    {
+                        var north = all[i + 179];
+                        if (north.PrimaryRoadType != -1)
+                        {
+                            g2.AddVerticesAndEdge(new OmtConnection(current, north, false));
+                        }
+                    }
 
-                    //// SE
-                    //if (i < 32220 && (i % 179 != 0 || i == 0))
-                    //{
-                    //    var south = all[i + 181];
-                    //    if (south.PrimaryRoadType != -1)
-                    //    {
-                    //        g.AddVerticesAndEdge(new OmtConnection(current, south, false));
-                    //    }
-                    //}
+                    // SE
+                    if (i < 32219 && ((i % 179) != 0 || i == 0))
+                    {
+                        var south = all[i + 181];
+                        if (south.PrimaryRoadType != -1)
+                        {
+                            g2.AddVerticesAndEdge(new OmtConnection(current, south, false));
+                        }
+                    }
                 }
             }
 
-            Prune(g, all);
+            //Prune(g, all, g2);
 
-            // var cc = new WeaklyConnectedComponentsAlgorithm<Omt, OmtConnection>(g);
-            // cc.Compute();
+            //var cc = new WeaklyConnectedComponentsAlgorithm<Omt, OmtConnection>(g);
+            //cc.Compute();
 
-            // var components = cc.Components.Values.Distinct().ToList();
+            //var components = cc.Components.Values.Distinct().ToList();
 
-            // var ap = new List<Omt>();
-            // foreach (var i in components)
-            // {
-            //     var root = cc.Components.First(x => x.Value == i).Key;
-            //     ap.AddRange(FindCutPoints(g, root).Keys);
-            // }
+            //var ap = new List<Omt>();
+            //foreach (var i in components)
+            //{
+            //    var root = cc.Components.First(x => x.Value == i).Key;
+            //    ap.AddRange(FindCutPoints(g, root).Keys);
+            //}
 
 
 
-            // var potentialCuts = all.Where(x => {
-            //         var isRoad = x.PrimaryRoadType != -1;
-            //         var gotEdges = g.TryGetOutEdges(x, out var outEdges);
-            //         return isRoad && gotEdges && outEdges.Count() > 2;
-            //     })
-            //     .Except(ap)
-            //     .ToList();
+            //var potentialCuts = all.Where(x =>
+            //{
+            //    var isRoad = x.PrimaryRoadType != -1;
+            //    var gotEdges = g.TryGetOutEdges(x, out var outEdges);
+            //    return isRoad && gotEdges && outEdges.Count() > 2;
+            //})
+            //    .Except(ap)
+            //    .ToList();
 
-            // var pcLookup = potentialCuts.ToDictionary(k => k, v => 0);
+            //var pcLookup = potentialCuts.ToDictionary(k => k, v => 0);
 
-            // foreach (var a in potentialCuts)
-            // {
-            ////     a.PrimaryRoadType = -3;
-            // }
+            //foreach (var a in potentialCuts)
+            //{
+            //    a.PrimaryRoadType = -3;
+            //}
 
             // var actualCuts = potentialCuts.Where(x => {
             //     return g.OutEdges(x)
@@ -181,6 +188,20 @@ namespace geopoiesis
             // {
             //     a.PrimaryRoadType = -1;
             // }
+
+            //var sources = g.Vertices.Where(x => g.OutDegree(x) > 4)
+            //    .Where(x => {
+            //        var adjacentEdges = g.OutEdges(x);
+            //        var c = adjacentEdges.Where(z => z.IsPrimary)
+            //            .Any(y => !Equals(y.Target, x) && g.OutDegree(y.Target) > 2);
+            //        return c;
+            //    })
+            //    .ToList();
+
+            //foreach (var s in sources)
+            //{
+            //    s.PrimaryRoadType = -2;
+            //}
 
             var z10overmaps = all.GroupBy(x => (x.OmX, x.OmY)).ToDictionary(k => k.Key, v => v.ToList());
 
@@ -198,7 +219,7 @@ namespace geopoiesis
             }
         }
 
-        private void Prune(BidirectionalGraph<Omt, OmtConnection> g, List<Omt> all)
+        private void Prune(BidirectionalGraph<Omt, OmtConnection> g, List<Omt> all, BidirectionalGraph<Omt, OmtConnection> g2)
         {
             bool doItToIt;
             do
@@ -224,6 +245,18 @@ namespace geopoiesis
                         return isRoad && gotEdges && outEdges.Count() > 2;
                     })
                     .Except(ap)
+                    .ToList();
+
+                var g2Targets = g2.Vertices.Where(x => g2.OutDegree(x) > 4)
+                    .Where(x => {
+                        var adjacentEdges = g2.OutEdges(x);
+                        var c = adjacentEdges.Where(z => z.IsPrimary)
+                            .Any(y => !Equals(y.Target, x) && g2.OutDegree(y.Target) > 2);
+                        return c;
+                    })
+                    .ToList();
+
+                potentialCuts = potentialCuts.Intersect(g2Targets)
                     .ToList();
 
                 var pcLookup = potentialCuts.ToDictionary(k => k, v => 0);
@@ -437,8 +470,6 @@ namespace geopoiesis
             {
                 return "road_ns";
             }
-
-
 
             switch (landUseCode)
             {
