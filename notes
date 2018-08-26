@@ -1,0 +1,1 @@
+$ vips dzsave x.png mass --layout google --suffix .png --background 0
